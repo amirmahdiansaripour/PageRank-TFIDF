@@ -1,5 +1,6 @@
 package edu.coursera.distributed;
 
+import scala.Int;
 import scala.Tuple2;
 
 import java.util.Random;
@@ -93,12 +94,16 @@ public class SparkTest extends TestCase {
         for (int i = 0; i < nNodes; i++) {
             nodes.add(i);
         }
-        System.out.println("GraphRDD: ");
 
-        return context.parallelize(nodes).mapToPair(i -> {
-            return new Tuple2(i, generateWebsite(i, nNodes, minEdgesPerNode,
-                    maxEdgesPerNode, edgeConfig));
-        });
+        JavaPairRDD<Integer, Website> graphRDD = context.parallelize(nodes).mapToPair(i -> new Tuple2<>(i, generateWebsite(i, nNodes, minEdgesPerNode,
+                   maxEdgesPerNode, edgeConfig)));
+
+        List<Tuple2<Integer, Website>> collected = graphRDD.collect();
+        System.out.println("\n" + "GraphRDD Elements example:");
+        for (int j = 0; j < 5; j++){
+            System.out.println(collected.get(j));
+        }
+        return graphRDD;
     }
 
     private static JavaPairRDD<Integer, Double> generateRankRDD(
@@ -157,7 +162,6 @@ public class SparkTest extends TestCase {
     private static void testDriver(final int nNodes, final int minEdgesPerNode,
             final int maxEdgesPerNode, final int niterations,
             final EdgeDistribution edgeConfig) {
-//        System.out.println("Hello test!");
         System.out.println("Running the PageRank algorithm for " + niterations +
                 " iterations on a website graph of " + nNodes + " websites");
         System.err.println();
@@ -172,7 +176,7 @@ public class SparkTest extends TestCase {
         for (int i = 0; i < niterations; i++) {
             ranksArr = seqPageRank(nodesArr, ranksArr);
         }
-        System.out.println("Ranks example");
+        System.out.println("Ranks of Website Example (Random initial values)");
         for (int j = 0 ; j < 5; j++){
             System.out.print(ranksArr[j] + "\t");
         }
@@ -186,8 +190,6 @@ public class SparkTest extends TestCase {
             nodes = generateGraphRDD(nNodes, minEdgesPerNode,
                     maxEdgesPerNode, edgeConfig, context);
 
-            System.out.println("Nodes");
-            System.out.println(nodes);
             ranks = generateRankRDD(nNodes, context);
             System.out.println("Ranks");
             System.out.println(ranks);
