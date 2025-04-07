@@ -2,7 +2,13 @@ package edu.coursera.distributed;
 
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaPairRDD;
+import scala.Int;
 import scala.Tuple2;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * A wrapper class for the implementation of a single iteration of the iterative
@@ -50,7 +56,7 @@ public final class PageRank {
             final JavaPairRDD<Integer, Website> sites,
             final JavaPairRDD<Integer, Double> ranks) {
 
-        System.out.println("Sites Example: ");
+        System.out.println("Websites Example: ");
         for (Tuple2<Integer, Website> websiteSample: sites.take(5)){
             System.out.println(websiteSample._1() + " -> " + websiteSample._2());
         }
@@ -59,14 +65,31 @@ public final class PageRank {
         for (Tuple2<Integer, Double> rankSample: ranks.take(5)){
             System.out.println(rankSample._1() + " -> " + rankSample._2());
         }
-        System.out.println("Sites Joined on Ranks: ");
-        JavaPairRDD<Integer, Tuple2<Website, Double>> joined_sites = sites.join(ranks);
-         for (Tuple2<Integer, Tuple2<Website, Double>> rankSample: joined_sites.take(5)){
-             System.out.println(rankSample._1() + " -> " + rankSample._2());
+        System.out.println("Websites Joined on Ranks: ");
+        JavaPairRDD<Integer, Tuple2<Website, Double>> join_sites_ranks = sites.join(ranks);
+         for (Tuple2<Integer, Tuple2<Website, Double>> joinSample: join_sites_ranks.take(5)){
+             System.out.println(joinSample._1() + " -> " + joinSample._2());
          }
 
+         JavaPairRDD<Integer, Double> results = join_sites_ranks.flatMapToPair(key_value ->{
+            Website currWebsite = key_value._2()._1();
+            Double currWebsiteRank = key_value._2()._2();
+            Iterator<Integer> neighborWebs = currWebsite.edgeIterator();
+            List<Tuple2<Integer, Double>> newRanks = new ArrayList<>();
+//            System.out.println("Curr node (website) neighbors: " + currWebsite.getNEdges());
+//            Integer index = 0;
+            while(neighborWebs.hasNext()){
+//                System.out.println("Neighbor number: " + index);
+//                index += 1;
+                Integer neighborWebID = neighborWebs.next();
+                Tuple2<Integer, Double> rankToNeighbor = new Tuple2(neighborWebID, currWebsiteRank/currWebsite.getNEdges());
+                newRanks.add(rankToNeighbor);
+            }
+            return newRanks.iterator();
+         });
 
+         return results;
 
-        throw new UnsupportedOperationException();
+//        throw new UnsupportedOperationException();
     }
 }
