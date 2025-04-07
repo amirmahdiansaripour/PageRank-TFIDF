@@ -50,21 +50,20 @@ public final class PageRank {
             final JavaPairRDD<Integer, Website> sites,
             final JavaPairRDD<Integer, Double> ranks) {
 
-        System.out.println("Samples from sites: ");
+        System.out.println("Sites Example: ");
         for (Tuple2<Integer, Website> websiteSample: sites.take(5)){
             System.out.println(websiteSample._1() + " -> " + websiteSample._2());
         }
 
-        System.out.println("Samples from ranks: ");
+        System.out.println("Ranks Example: ");
         for (Tuple2<Integer, Double> rankSample: ranks.take(5)){
             System.out.println(rankSample._1() + " -> " + rankSample._2());
         }
-        System.out.println("Samples from joined: ");
+        System.out.println("Sites Joined on Ranks: ");
         JavaPairRDD<Integer, Tuple2<Website, Double>> joined_sites = sites.join(ranks);
-        // for (Tuple2<Integer, Tuple2<Website, Double>> rankSample: joined_sites.take(5)){
-        //     System.out.println(rankSample._1() + " -> " + rankSample._2());
-        // }
-
+         for (Tuple2<Integer, Tuple2<Website, Double>> rankSample: joined_sites.take(5)){
+             System.out.println(rankSample._1() + " -> " + rankSample._2());
+         }
 
 
 

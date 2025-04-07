@@ -95,13 +95,13 @@ public class SparkTest extends TestCase {
             nodes.add(i);
         }
 
-        JavaPairRDD<Integer, Website> graphRDD = context.parallelize(nodes).mapToPair(i -> new Tuple2<>(i, generateWebsite(i, nNodes, minEdgesPerNode,
-                   maxEdgesPerNode, edgeConfig)));
+        JavaPairRDD<Integer, Website> graphRDD = context.parallelize(nodes).mapToPair(
+                i -> new Tuple2<>(i, generateWebsite(i, nNodes, minEdgesPerNode, maxEdgesPerNode, edgeConfig))
+        );
 
-        List<Tuple2<Integer, Website>> collected = graphRDD.collect();
-        System.out.println("\n" + "GraphRDD Elements example:");
+        List<Tuple2<Integer, Website>> collectedRdd = graphRDD.collect();
         for (int j = 0; j < 5; j++){
-            System.out.println(collected.get(j));
+            System.out.println(collectedRdd.get(j));
         }
         return graphRDD;
     }
@@ -113,10 +113,19 @@ public class SparkTest extends TestCase {
             nodes.add(i);
         }
 
-        return context.parallelize(nodes).mapToPair(i -> {
-            Random rand = new Random(i);
-            return new Tuple2(i, 100.0 * rand.nextDouble());
-        });
+        JavaPairRDD<Integer, Double> rankRDD = context.parallelize(nodes).mapToPair(
+                i -> {
+                    Random randomRank = new Random(i);
+                    return new Tuple2(i, 100.0 * randomRank.nextDouble());
+                }
+        );
+
+        List<Tuple2<Integer, Double>> collectedRdd = rankRDD.collect();
+        for(int t = 0; t < 5; t++){
+            System.out.println(collectedRdd.get(t));
+        }
+
+        return rankRDD;
     }
 
     private static Website[] generateGraphArr(final int nNodes,
@@ -169,14 +178,14 @@ public class SparkTest extends TestCase {
         final int repeats = 2;
         Website[] nodesArr = generateGraphArr(nNodes, minEdgesPerNode,
                 maxEdgesPerNode, edgeConfig);
-        System.out.println("Example of a website");
+        System.out.println("Example of a website:");
         System.out.println(nodesArr[0]);
 
         double[] ranksArr = generateRankArr(nNodes);
         for (int i = 0; i < niterations; i++) {
             ranksArr = seqPageRank(nodesArr, ranksArr);
         }
-        System.out.println("Ranks of Website Example (Random initial values)");
+        System.out.println("Websites ranks example (random initial values):");
         for (int j = 0 ; j < 5; j++){
             System.out.print(ranksArr[j] + "\t");
         }
@@ -186,18 +195,23 @@ public class SparkTest extends TestCase {
         JavaPairRDD<Integer, Website> nodes = null;
         JavaPairRDD<Integer, Double> ranks = null;
         final long singleStart = System.currentTimeMillis();
+
         for (int r = 0; r < repeats; r++) {
+            System.out.println("\n" + "GraphRDD elements example:");
             nodes = generateGraphRDD(nNodes, minEdgesPerNode,
                     maxEdgesPerNode, edgeConfig, context);
 
+            System.out.println("RankRDD elements example:");
             ranks = generateRankRDD(nNodes, context);
-            System.out.println("Ranks");
-            System.out.println(ranks);
 
             for (int i = 0; i < niterations; i++) {
                 ranks = PageRank.sparkPageRank(nodes, ranks);
             }
             List<Tuple2<Integer, Double>> parResult = ranks.collect();
+            System.out.println("Final ranks:");
+            for(int i = 0; i < 5; i++){
+                System.out.println(parResult.get(i));
+            }
         }
         final long singleElapsed = System.currentTimeMillis() - singleStart;
         context.stop();
