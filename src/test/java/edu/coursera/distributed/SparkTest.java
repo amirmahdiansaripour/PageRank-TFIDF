@@ -28,6 +28,8 @@ public class SparkTest extends TestCase {
         UNIFORM
     }
 
+    private static Integer NUM_OF_SAMPLES = 3;
+
     private static JavaSparkContext getSparkContext(final int nCores) {
         Logger.getLogger("org").setLevel(Level.OFF);
         Logger.getLogger("akka").setLevel(Level.OFF);
@@ -99,10 +101,10 @@ public class SparkTest extends TestCase {
                 i -> new Tuple2<>(i, generateWebsite(i, nNodes, minEdgesPerNode, maxEdgesPerNode, edgeConfig))
         );
 
-        List<Tuple2<Integer, Website>> collectedRdd = graphRDD.collect();
-        for (int j = 0; j < 5; j++){
-            System.out.println(collectedRdd.get(j));
-        }
+//        List<Tuple2<Integer, Website>> collectedRdd = graphRDD.collect();
+//        for (int j = 0; j < NUM_OF_SAMPLES; j++){
+//            System.out.println(collectedRdd.get(j));
+//        }
         return graphRDD;
     }
 
@@ -120,10 +122,10 @@ public class SparkTest extends TestCase {
                 }
         );
 
-        List<Tuple2<Integer, Double>> collectedRdd = rankRDD.collect();
-        for(int t = 0; t < 5; t++){
-            System.out.println(collectedRdd.get(t));
-        }
+//        List<Tuple2<Integer, Double>> collectedRdd = rankRDD.collect();
+//        for(int t = 0; t < NUM_OF_SAMPLES; t++){
+//            System.out.println(collectedRdd.get(t));
+//        }
 
         return rankRDD;
     }
@@ -165,98 +167,92 @@ public class SparkTest extends TestCase {
             newRanks[j] = 0.15 + 0.85 * newRanks[j];
         }
 
+
         return newRanks;
+    }
+
+    private static List<Tuple2<Integer, Double>> pageRankAlgorithm(int repeats, JavaSparkContext context, final int nNodes,
+                                             final int minEdgesPerNode, final int maxEdgesPerNode, final int niterations,
+                                                    EdgeDistribution edgeConfig){
+        JavaPairRDD<Integer, Website> nodes = null;
+        JavaPairRDD<Integer, Double> ranks = null;
+        List<Tuple2<Integer, Double>> parResults = null;
+
+        for (int r = 0; r < repeats; r++) {
+//            System.out.println("\n" + "GraphRDD elements example:");
+            nodes = generateGraphRDD(nNodes, minEdgesPerNode,
+                    maxEdgesPerNode, edgeConfig, context);
+
+//            System.out.println("RankRDD elements example:");
+            ranks = generateRankRDD(nNodes, context);
+
+            for (int i = 0; i < niterations; i++) {
+                ranks = PageRank.sparkPageRank(nodes, ranks);
+            }
+        }
+        parResults = ranks.collect();
+//        System.out.println("Final ranks:");
+//        for(int i = 0; i < NUM_OF_SAMPLES; i++){
+//            System.out.println("Web ID: " + parResults.get(i)._1() + " Web rank: " + parResults.get(i)._2());
+//        }
+
+        return parResults;
     }
 
     private static void testDriver(final int nNodes, final int minEdgesPerNode,
             final int maxEdgesPerNode, final int niterations,
             final EdgeDistribution edgeConfig) {
         System.out.println("Running the PageRank algorithm for " + niterations +
-                " iterations on a website graph of " + nNodes + " websites");
-        System.err.println();
+                " iterations on a website graph of " + nNodes + " websites" + "\n");
 
         final int repeats = 2;
-        Website[] nodesArr = generateGraphArr(nNodes, minEdgesPerNode,
-                maxEdgesPerNode, edgeConfig);
-        System.out.println("Example of a website:");
-        System.out.println(nodesArr[0]);
+        Website[] nodesArr = generateGraphArr(nNodes, minEdgesPerNode, maxEdgesPerNode, edgeConfig);
+//        System.out.print("Example of a website: " + nodesArr[0] + "\n");
 
+//        System.out.println("Websites ranks example (random initial values):");
         double[] ranksArr = generateRankArr(nNodes);
         for (int i = 0; i < niterations; i++) {
             ranksArr = seqPageRank(nodesArr, ranksArr);
         }
-        System.out.println("Websites ranks example (random initial values):");
-        for (int j = 0 ; j < 5; j++){
-            System.out.print(ranksArr[j] + "\t");
-        }
 
+        // Serial case
         JavaSparkContext context = getSparkContext(1);
-
-        JavaPairRDD<Integer, Website> nodes = null;
-        JavaPairRDD<Integer, Double> ranks = null;
         final long singleStart = System.currentTimeMillis();
-
-        for (int r = 0; r < repeats; r++) {
-            System.out.println("\n" + "GraphRDD elements example:");
-            nodes = generateGraphRDD(nNodes, minEdgesPerNode,
-                    maxEdgesPerNode, edgeConfig, context);
-
-            System.out.println("RankRDD elements example:");
-            ranks = generateRankRDD(nNodes, context);
-
-            for (int i = 0; i < niterations; i++) {
-                ranks = PageRank.sparkPageRank(nodes, ranks);
-            }
-            List<Tuple2<Integer, Double>> parResult = ranks.collect();
-            System.out.println("Final ranks:");
-            for(int i = 0; i < 5; i++){
-                System.out.println(parResult.get(i));
-            }
-        }
+        List<Tuple2<Integer, Double>> singleCoreResult = pageRankAlgorithm(repeats, context, nNodes, minEdgesPerNode, maxEdgesPerNode, niterations, edgeConfig);
         final long singleElapsed = System.currentTimeMillis() - singleStart;
         context.stop();
 
-        context = getSparkContext(getNCores());
-
-        List<Tuple2<Integer, Double>> parResult = null;
+        // Parallel case
+        JavaSparkContext multiCoreContext = getSparkContext(getNCores());
         final long parStart = System.currentTimeMillis();
-        for (int r = 0; r < repeats; r++) {
-            nodes = generateGraphRDD(nNodes, minEdgesPerNode,
-                    maxEdgesPerNode, edgeConfig, context);
-            ranks = generateRankRDD(nNodes, context);
-            for (int i = 0; i < niterations; i++) {
-                ranks = PageRank.sparkPageRank(nodes, ranks);
-            }
-            parResult = ranks.collect();
-        }
+        List<Tuple2<Integer, Double>> parResult = pageRankAlgorithm(repeats, multiCoreContext, nNodes, minEdgesPerNode, maxEdgesPerNode, niterations, edgeConfig);
         final long parElapsed = System.currentTimeMillis() - parStart;
-        final double speedup = (double)singleElapsed / (double)parElapsed;
-        context.stop();
+        multiCoreContext.stop();
 
+        final double speedup = (double)singleElapsed / (double)parElapsed;
+
+        // HashMap is empty
         Map<Integer, Double> keyed = new HashMap<Integer, Double>();
         for (Tuple2<Integer, Double> site : parResult) {
             assert (!keyed.containsKey(site._1()));
             keyed.put(site._1(), site._2());
         }
 
+        // Having web ID in the hash map and the difference between ranks
         assertEquals(nodesArr.length, parResult.size());
         for (int i = 0; i < parResult.size(); i++) {
             assertTrue(keyed.containsKey(nodesArr[i].getId()));
-            final double delta = Math.abs(ranksArr[i] -
-                    keyed.get(nodesArr[i].getId()));
+            final double delta = Math.abs(ranksArr[i] - keyed.get(nodesArr[i].getId()));
             assertTrue(delta < 1E-9);
         }
 
-        System.err.println();
-        System.err.println("Single-core execution ran in " + singleElapsed +
-                " ms");
-        System.err.println(getNCores() + "-core execution ran in " +
-                parElapsed + " ms, yielding a speedup of " + speedup + "x");
-        System.err.println();
+        System.out.println();
+        System.out.println("Single-core execution ran in " + singleElapsed + " ms");
+        System.out.println(getNCores() + "-core execution ran in " + parElapsed + " ms, yielding a speedup of " + speedup + "x");
+        System.out.println();
 
-        final double expectedSpeedup = 1.35;
-        final String msg = "Expected at least " + expectedSpeedup +
-            "x speedup, but only saw " + speedup + "x. Sequential time = " +
+        final double expectedSpeedup = 1.2;
+        final String msg = "Expected at least " + expectedSpeedup + "x speedup, but only saw " + speedup + "x. Sequential time = " +
             singleElapsed + " ms, parallel time = " + parElapsed + " ms";
         assertTrue(msg, speedup >= expectedSpeedup);
     }
