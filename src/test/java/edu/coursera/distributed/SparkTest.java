@@ -66,13 +66,11 @@ public class SparkTest extends TestCase {
         switch (edgeConfig) {
             case INCREASING:
                 double frac = (double)i / (double)nNodes;
-                double offset = (double)(maxEdgesPerNode - minEdgesPerNode)
-                    * frac;
+                double offset = (double)(maxEdgesPerNode - minEdgesPerNode) * frac;
                 nEdges = minEdgesPerNode + (int)offset;
                 break;
             case RANDOM:
-                nEdges = minEdgesPerNode +
-                    r.nextInt(maxEdgesPerNode - minEdgesPerNode);
+                nEdges = minEdgesPerNode + r.nextInt(maxEdgesPerNode - minEdgesPerNode);
                 break;
             case UNIFORM:
                 nEdges = maxEdgesPerNode;
@@ -199,6 +197,35 @@ public class SparkTest extends TestCase {
         return parResults;
     }
 
+    private static void checkRanksObtainedViaPar(List<Tuple2<Integer, Double>> parResult, Website[] nodesArr, double[] ranksArr){
+        // HashMap is empty
+        Map<Integer, Double> keyed = new HashMap<Integer, Double>();
+        for (Tuple2<Integer, Double> site : parResult) {
+            assert (!keyed.containsKey(site._1()));
+            keyed.put(site._1(), site._2());
+        }
+
+        // Having web ID in the hash map and the difference between ranks
+        assertEquals(nodesArr.length, parResult.size());
+        for (int i = 0; i < parResult.size(); i++) {
+            assertTrue(keyed.containsKey(nodesArr[i].getId()));
+            final double delta = Math.abs(ranksArr[i] - keyed.get(nodesArr[i].getId()));
+            assertTrue(delta < 1E-9);
+        }
+    }
+
+    private static void checkSpeedUp(final long singleElapsed, final double parElapsed){
+        final double speedup = (double)singleElapsed / (double)parElapsed;
+        final double expectedSpeedup = 1.2;
+        System.out.println();
+        System.out.println("Single-core execution ran in " + singleElapsed + " ms");
+        System.out.println(getNCores() + "-core execution ran in " + parElapsed + " ms, yielding a speedup of " + speedup + "x");
+        System.out.println();
+        final String msg = "Expected at least " + expectedSpeedup + "x speedup, but only saw " + speedup + "x. Sequential time = " +
+                singleElapsed + " ms, parallel time = " + parElapsed + " ms";
+        assertTrue(msg, speedup >= expectedSpeedup);
+    }
+
     private static void testDriver(final int nNodes, final int minEdgesPerNode,
             final int maxEdgesPerNode, final int niterations,
             final EdgeDistribution edgeConfig) {
@@ -229,32 +256,8 @@ public class SparkTest extends TestCase {
         final long parElapsed = System.currentTimeMillis() - parStart;
         multiCoreContext.stop();
 
-        final double speedup = (double)singleElapsed / (double)parElapsed;
-
-        // HashMap is empty
-        Map<Integer, Double> keyed = new HashMap<Integer, Double>();
-        for (Tuple2<Integer, Double> site : parResult) {
-            assert (!keyed.containsKey(site._1()));
-            keyed.put(site._1(), site._2());
-        }
-
-        // Having web ID in the hash map and the difference between ranks
-        assertEquals(nodesArr.length, parResult.size());
-        for (int i = 0; i < parResult.size(); i++) {
-            assertTrue(keyed.containsKey(nodesArr[i].getId()));
-            final double delta = Math.abs(ranksArr[i] - keyed.get(nodesArr[i].getId()));
-            assertTrue(delta < 1E-9);
-        }
-
-        System.out.println();
-        System.out.println("Single-core execution ran in " + singleElapsed + " ms");
-        System.out.println(getNCores() + "-core execution ran in " + parElapsed + " ms, yielding a speedup of " + speedup + "x");
-        System.out.println();
-
-        final double expectedSpeedup = 1.2;
-        final String msg = "Expected at least " + expectedSpeedup + "x speedup, but only saw " + speedup + "x. Sequential time = " +
-            singleElapsed + " ms, parallel time = " + parElapsed + " ms";
-        assertTrue(msg, speedup >= expectedSpeedup);
+        checkRanksObtainedViaPar(parResult, nodesArr, ranksArr);
+        checkSpeedUp(singleElapsed, parElapsed);
     }
 
     public void testUniformTwentyThousand() {
@@ -267,6 +270,8 @@ public class SparkTest extends TestCase {
         testDriver(nNodes, minEdgesPerNode, maxEdgesPerNode, niterations,
                 edgeConfig);
     }
+
+    // Test with different node numbers and edge configs. edge config means based on which order are nodes connected.
 
     public void testUniformFiftyThousand() {
         final int nNodes = 50000;
