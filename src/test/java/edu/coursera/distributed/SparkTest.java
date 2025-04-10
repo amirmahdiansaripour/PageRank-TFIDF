@@ -1,5 +1,6 @@
 package edu.coursera.distributed;
 
+import org.junit.Test;
 import scala.Int;
 import scala.Tuple2;
 
@@ -260,6 +261,7 @@ public class SparkTest extends TestCase {
         checkSpeedUp(singleElapsed, parElapsed);
     }
 
+    @Test
     public void testUniformTwentyThousand() {
         final int nNodes = 20000;
         final int minEdgesPerNode = 20;
@@ -272,7 +274,7 @@ public class SparkTest extends TestCase {
     }
 
     // Test with different node numbers and edge configs. edge config means based on which order are nodes connected.
-
+    @Test
     public void testUniformFiftyThousand() {
         final int nNodes = 50000;
         final int minEdgesPerNode = 20;
@@ -284,6 +286,7 @@ public class SparkTest extends TestCase {
                 edgeConfig);
     }
 
+    @Test
     public void testIncreasingTwentyThousand() {
         final int nNodes = 20000;
         final int minEdgesPerNode = 20;
@@ -295,6 +298,7 @@ public class SparkTest extends TestCase {
                 edgeConfig);
     }
 
+    @Test
     public void testIncreasingFiftyThousand() {
         final int nNodes = 50000;
         final int minEdgesPerNode = 20;
@@ -306,6 +310,7 @@ public class SparkTest extends TestCase {
                 edgeConfig);
     }
 
+    @Test
     public void testRandomTwentyThousand() {
         final int nNodes = 20000;
         final int minEdgesPerNode = 20;
@@ -317,6 +322,7 @@ public class SparkTest extends TestCase {
                 edgeConfig);
     }
 
+    @Test
     public void testRandomFiftyThousand() {
         final int nNodes = 50000;
         final int minEdgesPerNode = 20;
@@ -326,5 +332,12 @@ public class SparkTest extends TestCase {
 
         testDriver(nNodes, minEdgesPerNode, maxEdgesPerNode, niterations,
                 edgeConfig);
+    }
+
+    @Test
+    public void testTermFrequency(){
+       TF_IDF test = new TF_IDF("sample.txt");
+        JavaSparkContext context = getSparkContext(1);
+        test.TF_IDF_algorithm(context);
     }
 }
