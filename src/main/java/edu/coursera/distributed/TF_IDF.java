@@ -34,11 +34,12 @@ public class TF_IDF {
       return wordCounts;
     }
 
-    public void TF_IDF_algorithm(JavaSparkContext context){
+    public List<Tuple2<String, Integer>> TF_IDF_algorithm(JavaSparkContext context){
        JavaPairRDD<String, Integer> wordCounts = termFrequency(context);
        List<Tuple2<String, Integer>> pairs  = wordCounts.collect();
-       for(Tuple2<String, Integer> kv: pairs)
-           System.out.println(kv._1() + " " + kv._2());
+//       for(Tuple2<String, Integer> kv: pairs)
+//           System.out.println(kv._1() + " " + kv._2());
+        return pairs;
     }
 
 }
