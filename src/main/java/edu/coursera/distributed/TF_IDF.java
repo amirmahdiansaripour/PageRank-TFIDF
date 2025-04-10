@@ -19,34 +19,26 @@ public class TF_IDF {
         text_file_path = file_path;
     }
 
-//    TF_IDF(String text_file_path) throws FileNotFoundException{
-//        File textFile = new File(text_file_path);
-//        Scanner scanner = new Scanner(textFile);
-//        while(scanner.hasNextLine()){
-//
-//        }
-//
-//    }
 
-    public void termFrequency(JavaSparkContext context){
-//        System.out.println("Hello beginning of TF");
+    public JavaPairRDD<String, Integer> termFrequency(JavaSparkContext context){
       JavaRDD<String> wholeFile  = context.textFile(this.text_file_path);
-      List<String> sentences = wholeFile.collect();
-      for (String sentence: sentences)
-          System.out.println(sentence);
+//      List<String> sentences = wholeFile.collect();
+      JavaRDD<String> words = wholeFile.flatMap(file -> Arrays.asList(file.split(" ")).iterator());
+//      List<String> words_collected = words.collect();
+//      for(String word:words_collected)
+//          System.out.println(word);
+      JavaPairRDD<String, Integer> wordCounts_initial = words.mapToPair(word -> new Tuple2<>(word, 1));
 
-//      JavaRDD<String> words = wholeFile.flatMap(Arrays.asList(file -> file.split(" ")).iterator());
-//      JavaPairRDD<Integer, String> wordCounts_initial = words.mapToPair(word -> new Tuple2<>(1, word));
-//      JavaPairRDD<Integer, String> wordCounts = wordCounts_initial.reduceByKey((x, y) -> (x + y));
-//      return wordCounts;
+      JavaPairRDD<String, Integer> wordCounts = wordCounts_initial.reduceByKey((x, y) -> (x + y));
+//      List<Tuple2<String, Integer>> words_collected = wordCounts.collect();
+      return wordCounts;
     }
 
     public void TF_IDF_algorithm(JavaSparkContext context){
-//       JavaPairRDD<Integer, String> wordCounts = termFrequency(context);
-//       List<Tuple2<Integer, String>> pairs  = wordCounts.collect();
-//       for(Tuple2<Integer, String> kv: pairs)
-//           System.out.println("Key: " + kv._1() + " Value: " + kv._2());
-        termFrequency(context);
+       JavaPairRDD<String, Integer> wordCounts = termFrequency(context);
+       List<Tuple2<String, Integer>> pairs  = wordCounts.collect();
+       for(Tuple2<String, Integer> kv: pairs)
+           System.out.println(kv._1() + " " + kv._2());
     }
 
 }

@@ -1,5 +1,6 @@
 package edu.coursera.distributed;
 
+import org.apache.hadoop.shaded.org.checkerframework.checker.units.qual.C;
 import org.junit.Test;
 import scala.Int;
 import scala.Tuple2;
@@ -30,31 +31,6 @@ public class SparkTest extends TestCase {
     }
 
     private static Integer NUM_OF_SAMPLES = 3;
-
-    private static JavaSparkContext getSparkContext(final int nCores) {
-        Logger.getLogger("org").setLevel(Level.OFF);
-        Logger.getLogger("akka").setLevel(Level.OFF);
-        final SparkConf conf = new SparkConf()
-            .setAppName("edu.coursera.distributed.PageRank")
-            .setMaster("local[" + nCores + "]")
-            .set("spark.ui.showConsoleProgress", "false");
-        JavaSparkContext ctx = new JavaSparkContext(conf);
-        ctx.setLogLevel("OFF");
-        return ctx;
-    }
-
-    private static int getNCores() {
-        String ncoresStr = System.getenv("COURSERA_GRADER_NCORES");
-        if (ncoresStr == null) {
-            ncoresStr = System.getProperty("COURSERA_GRADER_NCORES");
-        }
-
-        if (ncoresStr == null) {
-            return Runtime.getRuntime().availableProcessors();
-        } else {
-            return Integer.parseInt(ncoresStr);
-        }
-    }
 
     private static Website generateWebsite(final int i, final int nNodes,
             final int minEdgesPerNode, final int maxEdgesPerNode,
@@ -215,12 +191,12 @@ public class SparkTest extends TestCase {
         }
     }
 
-    private static void checkSpeedUp(final long singleElapsed, final double parElapsed){
+    private static void checkSpeedUp(final long singleElapsed, final double parElapsed, final int nCores){
         final double speedup = (double)singleElapsed / (double)parElapsed;
         final double expectedSpeedup = 1.2;
         System.out.println();
         System.out.println("Single-core execution ran in " + singleElapsed + " ms");
-        System.out.println(getNCores() + "-core execution ran in " + parElapsed + " ms, yielding a speedup of " + speedup + "x");
+        System.out.println(nCores + "-core execution ran in " + parElapsed + " ms, yielding a speedup of " + speedup + "x");
         System.out.println();
         final String msg = "Expected at least " + expectedSpeedup + "x speedup, but only saw " + speedup + "x. Sequential time = " +
                 singleElapsed + " ms, parallel time = " + parElapsed + " ms";
@@ -244,21 +220,21 @@ public class SparkTest extends TestCase {
         }
 
         // Serial case
-        JavaSparkContext context = getSparkContext(1);
+        Context context = new Context("Single");
         final long singleStart = System.currentTimeMillis();
-        List<Tuple2<Integer, Double>> singleCoreResult = pageRankAlgorithm(repeats, context, nNodes, minEdgesPerNode, maxEdgesPerNode, niterations, edgeConfig);
+        List<Tuple2<Integer, Double>> singleCoreResult = pageRankAlgorithm(repeats, context.getJavaSparkContext(), nNodes, minEdgesPerNode, maxEdgesPerNode, niterations, edgeConfig);
         final long singleElapsed = System.currentTimeMillis() - singleStart;
         context.stop();
 
         // Parallel case
-        JavaSparkContext multiCoreContext = getSparkContext(getNCores());
+        Context multiCoreContext = new Context("Parallel");
         final long parStart = System.currentTimeMillis();
-        List<Tuple2<Integer, Double>> parResult = pageRankAlgorithm(repeats, multiCoreContext, nNodes, minEdgesPerNode, maxEdgesPerNode, niterations, edgeConfig);
+        List<Tuple2<Integer, Double>> parResult = pageRankAlgorithm(repeats, multiCoreContext.getJavaSparkContext(), nNodes, minEdgesPerNode, maxEdgesPerNode, niterations, edgeConfig);
         final long parElapsed = System.currentTimeMillis() - parStart;
         multiCoreContext.stop();
 
         checkRanksObtainedViaPar(parResult, nodesArr, ranksArr);
-        checkSpeedUp(singleElapsed, parElapsed);
+        checkSpeedUp(singleElapsed, parElapsed, multiCoreContext.getNumberofCorses());
     }
 
     @Test
@@ -332,12 +308,5 @@ public class SparkTest extends TestCase {
 
         testDriver(nNodes, minEdgesPerNode, maxEdgesPerNode, niterations,
                 edgeConfig);
-    }
-
-    @Test
-    public void testTermFrequency(){
-       TF_IDF test = new TF_IDF("sample.txt");
-        JavaSparkContext context = getSparkContext(1);
-        test.TF_IDF_algorithm(context);
     }
 }
