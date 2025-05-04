@@ -60,6 +60,17 @@ public class TF_IDF_Test extends TestCase {
 
     }
 
+    @Test
+    public void checkTFValues(List<HashMap<String, Double>> gt, List<Tuple2<String, Tuple2<Integer, Double>>> testRes){
+        for(Tuple2<String, Tuple2<Integer, Double>> oneFileRes : testRes){
+            String wordToBeChecked = oneFileRes._1();
+            Integer fileID = oneFileRes._2()._1();
+            Double wordTFPerDoc = oneFileRes._2()._2();
+            Double correctTF = gt.get(fileID).get(wordToBeChecked);
+            assertTrue("TF value for word " + wordToBeChecked + " in file " + fileID + " is not correct." + wordTFPerDoc + " != " + correctTF, wordTFPerDoc.equals(correctTF));
+        }
+    }
+
 
     @Test
     public void testTermFrequency(){
@@ -80,7 +91,7 @@ public class TF_IDF_Test extends TestCase {
         List<String> fileContents = test.getFileContents();
         List<HashMap<String, Double>> groundTruth = calcGroundTruth(fileContents);
         checkLengths(groundTruth, toBeCompared);
-//        checkTFValues(groundTruth, toBeCompared);
+        checkTFValues(groundTruth, toBeCompared);
     }
 
 }
