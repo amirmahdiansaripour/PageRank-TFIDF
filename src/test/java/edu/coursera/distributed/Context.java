@@ -14,10 +14,10 @@ public class Context {
         if (ncoresStr == null) {
             ncoresStr = System.getProperty("COURSERA_GRADER_NCORES");
         }
-
         if (ncoresStr == null) {
             return Runtime.getRuntime().availableProcessors();
-        } else {
+        }
+        else {
             return Integer.parseInt(ncoresStr);
         }
     }
