@@ -31,7 +31,7 @@ public class TF_IDF_Test extends TestCase {
         return res;
     }
 
-    public List<HashMap<String, Double>> calcGroundTruth(List<String> contents){
+    public List<HashMap<String, Double>> calcGroundTruthforTF(List<String> contents){
         List<HashMap<String, Double>> res = new ArrayList<>();
         for (int i = 0; i < contents.size(); i++) {
             String words[] = contents.get(i).toLowerCase(Locale.ROOT).split(" ");
@@ -40,8 +40,42 @@ public class TF_IDF_Test extends TestCase {
         return res;
     }
 
+    public HashMap<String, Set<Integer>> handleWordFreqInDocs(String word, Integer fileIndex, HashMap<String, Set<Integer>> fileIndicesPerWord){
+        if(!fileIndicesPerWord.containsKey(word)) {
+            Set<Integer> newHashMap = new HashSet<>();
+            newHashMap.add(fileIndex);
+            fileIndicesPerWord.put(word, newHashMap);
+        }
+
+        else{
+            if(!fileIndicesPerWord.get(word).contains(fileIndex)) {
+                Set<Integer> newWordHash = fileIndicesPerWord.get(word);
+                newWordHash.add(fileIndex);
+                fileIndicesPerWord.replace(word, newWordHash);
+            }
+        }
+        return fileIndicesPerWord;
+    }
+
+    public HashMap<String, Double> calcGroundTruthforIDF(List<String> contents){
+        HashMap<String, Set<Integer>> fileIndicesPerWord = new HashMap<>();
+        Integer numOfFiles = contents.size();
+        for(int fileIndex = 0; fileIndex < contents.size(); fileIndex++){
+            String[] words = contents.get(fileIndex).split(" ");
+            for(String word : words) {
+                fileIndicesPerWord = handleWordFreqInDocs(word, fileIndex, fileIndicesPerWord);
+            }
+        }
+        HashMap<String, Double> IDF_res = new HashMap<>();
+        for(String word : fileIndicesPerWord.keySet()) {
+            IDF_res.put(word, Math.log((double) numOfFiles / fileIndicesPerWord.get(word).size()));
+//            System.out.println(word + " : " + IDF_res.get(word));
+        }
+        return IDF_res;
+    }
+
     @Test
-    public void checkLengths(List<HashMap<String, Double>> gt, List<Tuple2<String, Tuple2<Integer, Double>>> testRes){
+    public void checkTFLengths(List<HashMap<String, Double>> gt, List<Tuple2<String, Tuple2<Integer, Double>>> testRes){
         int numberOfFiles = gt.size();
         Integer wordsPerFileCounter[] = new Integer[numberOfFiles];
         for(int i = 0; i < wordsPerFileCounter.length; i++)
@@ -71,27 +105,28 @@ public class TF_IDF_Test extends TestCase {
         }
     }
 
-
     @Test
-    public void testTermFrequency(){
+    public void testTF_IDF(){
         String directoryPath = "sample_files";
         TF_IDF test = new TF_IDF(directoryPath);
         test.setFileContents();
         Context context = new Context("Single");
+        List<String> fileContents = test.getFileContents();
         JavaPairRDD<Integer, String> textFileRDD = test.generateTextFileRDD(context.getJavaSparkContext());
 //        for(Tuple2<Integer, String> text : textFileRDD.collect())
 //            System.out.println(text._1() + " : " + text._2());
 
-        JavaPairRDD<String, Tuple2<Integer, Double>> TF_Pairs= test.TF_IDF_algorithm(textFileRDD);
+        JavaPairRDD<String, Tuple2<Integer, Double>> TF_Pairs= test.calcTF(textFileRDD);
+//        JavaPairRDD<String, Double> IDF_Pairs = test.calcIDF(TF_Pairs, fileContents.size());
 //        for(Tuple2<String, Tuple2<Integer, Double>> onePair : TF_Pairs.collect()){
 //            System.out.println("TF_score of word " + onePair._1() + " is " + onePair._2()._2() + " in File " + onePair._2()._1());
 //        }
-        List<Tuple2<String, Tuple2<Integer, Double>>> toBeCompared = TF_Pairs.collect();
+        List<Tuple2<String, Tuple2<Integer, Double>>> toBeComparedTF = TF_Pairs.collect();
         context.stop();
-        List<String> fileContents = test.getFileContents();
-        List<HashMap<String, Double>> groundTruth = calcGroundTruth(fileContents);
-        checkLengths(groundTruth, toBeCompared);
-        checkTFValues(groundTruth, toBeCompared);
+        List<HashMap<String, Double>> groundTruthTF = calcGroundTruthforTF(fileContents);
+        HashMap<String, Double> groundTruthIDF = calcGroundTruthforIDF(fileContents);
+        checkTFLengths(groundTruthTF, toBeComparedTF);
+        checkTFValues(groundTruthTF, toBeComparedTF);
+//        checkIDFValues();
     }
-
 }

@@ -1,5 +1,6 @@
 package edu.coursera.distributed;
 
+import com.google.common.collect.Iterables;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Int;
@@ -66,7 +67,26 @@ public class TF_IDF {
         return textFileRDD;
     }
 
-   JavaPairRDD<String, Tuple2<Integer, Double>> TF_IDF_algorithm(JavaPairRDD<Integer, String> fileContents){
+    public JavaPairRDD<String, Double> calcIDF(JavaPairRDD<String, Tuple2<Integer, Double>> input, Integer numOfFiles){
+        JavaPairRDD<String, Integer> wordsInDocs = input.mapToPair(pair ->{
+           return new Tuple2<String, Integer>(pair._1(), pair._2()._1());
+        });
+        JavaPairRDD<String, Iterable<Integer>> groupedByWord = wordsInDocs.distinct().groupByKey();
+        List<Tuple2<String, Iterable<Integer>>> groupedByWordShow = groupedByWord.collect();
+//        for(Tuple2<String, Iterable<Integer>> pair: groupedByWordShow){
+//            System.out.println(pair._1() + " : " + pair._2().toString());
+//        }
+        JavaPairRDD<String, Double> wordCountInWholeFiles = groupedByWord.mapToPair(pair ->{
+            Integer totalNumOfFilesWordAppeard = Iterables.size(pair._2());
+            String word = pair._1();
+            Double IDF_Score = Math.log((double) numOfFiles / totalNumOfFilesWordAppeard);
+            return new Tuple2<>(word, IDF_Score);
+        }
+        );
+        return wordCountInWholeFiles;
+    }
+
+   public JavaPairRDD<String, Tuple2<Integer, Double>> calcTF(JavaPairRDD<Integer, String> fileContents){
        JavaPairRDD<String, Tuple2<Integer, Double>> TF_Res = fileContents.flatMapToPair(file ->{
             Integer fileID = file._1();
             String[] textWords = file._2().toLowerCase(Locale.ROOT).split(" ");
