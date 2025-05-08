@@ -115,6 +115,19 @@ public class TF_IDF_Test extends TestCase {
         return gtRes;
     }
 
+    public void showSortedTF_IDFPairs(HashMap<String, Double> TF_IDFPairs){
+        List<Map.Entry<String, Double> > sortedList = new LinkedList<>(TF_IDFPairs.entrySet());
+
+        Collections.sort(sortedList, (i1, i2)-> i1.getValue().compareTo(i2.getValue()));
+
+        for (int index = 0; index < 30; index++) {
+            Map.Entry<String, Double> record = sortedList.get(sortedList.size()-1 -index);
+            System.out.print("Word:\t" + record.getKey() + "\t" + "TF-IDF value:\t");
+            System.out.printf("%.3f%n", record.getValue());
+            System.out.println();
+        }
+    }
+
     @Test
     public void testTFPairsLengths(){
         TF_pairs= test.calcTF(textFileRDD);
@@ -201,6 +214,8 @@ public class TF_IDF_Test extends TestCase {
         List<Tuple2<String, Tuple2<Integer, Double>>> TF_IDF_List = TF_IDF_pairs.collect();
         HashMap<String, Double> groundTruthforTFIDF = calcGroundTruthforTFIDF();
 
+//        showSortedTF_IDFPairs(groundTruthforTFIDF);
+
         for(Tuple2<String, Tuple2<Integer, Double>> TF_IDF_record : TF_IDF_List){
             String word = TF_IDF_record._1();
             Integer fileID = TF_IDF_record._2()._1();
@@ -211,4 +226,20 @@ public class TF_IDF_Test extends TestCase {
             assertTrue(errorMessage, TF_IDF_gt.equals(TF_IDF_test));
         }
     }
+
+    @Test
+    public void testPerformance(){
+        final long parallelStart = System.currentTimeMillis();
+        TF_pairs = test.calcTF(textFileRDD);
+        IDF_pairs = test.calcIDF(TF_pairs, filesContents.size());
+        JavaPairRDD<String, Tuple2<Integer, Double>> TF_IDF_pairs = test.calcTF_IDF_Join(TF_pairs, IDF_pairs);
+        final long parallelElapsed = System.currentTimeMillis() - parallelStart;
+
+        final long serialStart = System.currentTimeMillis();
+        HashMap<String, Double> groundTruthforTFIDF = calcGroundTruthforTFIDF();
+        final long serialElapsed = System.currentTimeMillis() - serialStart;
+
+        System.out.println("Parallel: " + parallelElapsed + "\t\t" + "Serial:" + serialElapsed + "\t\t" + "Performance:" + (double)serialElapsed / (double)parallelElapsed);
+    }
+
 }
