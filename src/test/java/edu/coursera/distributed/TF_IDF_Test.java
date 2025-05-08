@@ -2,6 +2,7 @@ package edu.coursera.distributed;
 
 
 import junit.framework.TestCase;
+import org.apache.hadoop.util.hash.Hash;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
@@ -26,6 +27,22 @@ public class TF_IDF_Test extends TestCase {
     private JavaPairRDD<String, Tuple2<Integer, Double>> TF_pairs;
     private JavaPairRDD<String, Double> IDF_pairs;
     private JavaPairRDD<Integer, String> textFileRDD;
+    private List<String> filesContents;
+
+    @Before
+    public void setUp(){
+        context = new Context("Parallel");
+        directoryPath = "sample_files";
+        test = new TF_IDF(directoryPath);
+        test.setFileContents();
+        textFileRDD = test.generateTextFileRDD(context.getJavaSparkContext());
+        filesContents = test.getFileContents();
+    }
+
+    @After
+    public void tearDown(){
+        context.stop();
+    }
 
     public HashMap<String, Double> calcWordCountPerFile(String[] words){
         HashMap<String, Double> res = new HashMap<>();
@@ -41,7 +58,6 @@ public class TF_IDF_Test extends TestCase {
     }
 
     public List<HashMap<String, Double>> calcGroundTruthforTF(){
-        List<String> filesContents = test.getFileContents();
         List<HashMap<String, Double>> res = new ArrayList<>();
         for (int i = 0; i < filesContents.size(); i++) {
             String words[] = filesContents.get(i).toLowerCase(Locale.ROOT).split(" ");
@@ -68,7 +84,6 @@ public class TF_IDF_Test extends TestCase {
     }
 
     public HashMap<String, Double> calcGroundTruthforIDF(){
-        List<String> filesContents = test.getFileContents();
         HashMap<String, Set<Integer>> fileIndicesPerWord = new HashMap<>();
         Integer numOfFiles = filesContents.size();
         for(int fileIndex = 0; fileIndex < filesContents.size(); fileIndex++){
@@ -85,18 +100,19 @@ public class TF_IDF_Test extends TestCase {
         return IDF_res;
     }
 
-    @Before
-    public void setUp(){
-        context = new Context("Parallel");
-        directoryPath = "sample_files";
-        test = new TF_IDF(directoryPath);
-        test.setFileContents();
-        textFileRDD = test.generateTextFileRDD(context.getJavaSparkContext());
-    }
-
-    @After
-    public void tearDown(){
-        context.stop();
+    public HashMap<String, Double> calcGroundTruthforTFIDF(){
+        List<HashMap<String, Double>> TF_gt = calcGroundTruthforTF();
+        HashMap<String, Double> IDF_gt = calcGroundTruthforIDF();
+        HashMap<String, Double> gtRes = new HashMap<>();
+        Integer fileID = 0;
+        for(HashMap<String, Double> TF_recordHashMap : TF_gt){
+            for(String keyWord : TF_recordHashMap.keySet()){
+                String keyForTFIDFHash = keyWord + ":" + Integer.toString(fileID);
+                gtRes.put(keyForTFIDFHash, TF_recordHashMap.get(keyWord) * IDF_gt.get(keyWord));
+            }
+            fileID += 1;
+        }
+        return gtRes;
     }
 
     @Test
@@ -140,7 +156,7 @@ public class TF_IDF_Test extends TestCase {
     @Test
     public void testIDFPairsLenghts(){
         TF_pairs= test.calcTF(textFileRDD);
-        IDF_pairs = test.calcIDF(TF_pairs, test.getFileContents().size());
+        IDF_pairs = test.calcIDF(TF_pairs, filesContents.size());
         HashMap<String, Double> groundTruthIDF = calcGroundTruthforIDF();
         Integer gtNumPairs = groundTruthIDF.keySet().size();
         Integer testNumPairs = IDF_pairs.collect().size();
@@ -151,7 +167,7 @@ public class TF_IDF_Test extends TestCase {
     @Test
     public void testIDFPairsValues(){
         TF_pairs= test.calcTF(textFileRDD);
-        IDF_pairs = test.calcIDF(TF_pairs, test.getFileContents().size());
+        IDF_pairs = test.calcIDF(TF_pairs, filesContents.size());
         HashMap<String, Double> groundTruthIDF = calcGroundTruthforIDF();
 
         for(Tuple2<String, Double> testPair : IDF_pairs.collect()){
@@ -161,6 +177,27 @@ public class TF_IDF_Test extends TestCase {
             assertTrue("IDF value for word " + word + " is not calculated correctly. (GT, testVal) = (" + IDF_gtVal + ", " + IDF_valTest + " )"
                     , IDF_gtVal.equals(IDF_valTest));
 
+        }
+    }
+
+
+    @Test
+    public void testIDFPairValues(){
+        TF_pairs = test.calcTF(textFileRDD);
+        IDF_pairs = test.calcIDF(TF_pairs, filesContents.size());
+        JavaPairRDD<String, Tuple2<Integer, Double>> TF_IDF_pairs = test.calcTF_IDF_Join(TF_pairs, IDF_pairs);
+
+        List<Tuple2<String, Tuple2<Integer, Double>>> TF_IDF_List = TF_IDF_pairs.collect();
+        HashMap<String, Double> groundTruthforTFIDF = calcGroundTruthforTFIDF();
+
+        for(Tuple2<String, Tuple2<Integer, Double>> TF_IDF_record : TF_IDF_List){
+            String word = TF_IDF_record._1();
+            Integer fileID = TF_IDF_record._2()._1();
+            Double TF_IDF_test = TF_IDF_record._2()._2();
+            String keyOfGroundTruth = word + ":" + Integer.toString(fileID);
+            Double TF_IDF_gt = groundTruthforTFIDF.get(keyOfGroundTruth);
+            String errorMessage = "TF-IDF value for word " + word + " in document sample" + (fileID + 1) + ".txt is not correct. (GT, testVal) = (" + TF_IDF_gt + "," + TF_IDF_test +").";
+            assertTrue(errorMessage, TF_IDF_gt.equals(TF_IDF_test));
         }
     }
 

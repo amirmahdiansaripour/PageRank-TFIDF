@@ -72,7 +72,7 @@ public class TF_IDF {
            return new Tuple2<String, Integer>(pair._1(), pair._2()._1());
         });
         JavaPairRDD<String, Iterable<Integer>> groupedByWord = wordsInDocs.distinct().groupByKey();
-        List<Tuple2<String, Iterable<Integer>>> groupedByWordShow = groupedByWord.collect();
+//        List<Tuple2<String, Iterable<Integer>>> groupedByWordShow = groupedByWord.collect();
 //        for(Tuple2<String, Iterable<Integer>> pair: groupedByWordShow){
 //            System.out.println(pair._1() + " : " + pair._2().toString());
 //        }
@@ -105,6 +105,25 @@ public class TF_IDF {
             return correctFormForTF.iterator();
         });
         return TF_Res;
+   }
+
+   public JavaPairRDD<String, Tuple2<Integer, Double>> calcTF_IDF_Join(JavaPairRDD<String, Tuple2<Integer, Double>> TF_RDD,
+                                                      JavaPairRDD<String, Double> IDF_RDD){
+
+        JavaPairRDD<String, Tuple2<Tuple2<Integer, Double>, Double>> Joined_TF_on_IDF = TF_RDD.join(IDF_RDD);
+
+        JavaPairRDD<String, Tuple2<Integer, Double>> TF_IDF_finalRes = Joined_TF_on_IDF.mapToPair(joinedRecord -> {
+            String word = joinedRecord._1();
+            Integer textID = joinedRecord._2()._1()._1();
+            Double TF_score = joinedRecord._2()._1()._2();
+            Double IDF_score = joinedRecord._2()._2();
+            Double TF_IDF_multiplied = TF_score * IDF_score;
+            Tuple2<Integer, Double> secondComponent = new Tuple2<>(textID, TF_IDF_multiplied);
+            return new Tuple2<>(word, secondComponent);
+        }
+        );
+
+        return TF_IDF_finalRes;
    }
 
 }
