@@ -180,9 +180,20 @@ public class TF_IDF_Test extends TestCase {
         }
     }
 
+    @Test
+    public void testTF_IDFPairsLengths(){
+        TF_pairs = test.calcTF(textFileRDD);
+        IDF_pairs = test.calcIDF(TF_pairs, filesContents.size());
+        JavaPairRDD<String, Tuple2<Integer, Double>> TF_IDF_pairs = test.calcTF_IDF_Join(TF_pairs, IDF_pairs);
+        List<Tuple2<String, Tuple2<Integer, Double>>> TF_IDF_List = TF_IDF_pairs.collect();
+        HashMap<String, Double> groundTruthforTFIDF = calcGroundTruthforTFIDF();
+        Integer gt_TFIDF_length = groundTruthforTFIDF.size();
+        Integer test_TFIDF_length = TF_IDF_List.size();
+        assertTrue("Number of IDF pairs not correctly detected by the algorithm", gt_TFIDF_length.equals(test_TFIDF_length));
+    }
 
     @Test
-    public void testIDFPairValues(){
+    public void testTF_IDFPairValues(){
         TF_pairs = test.calcTF(textFileRDD);
         IDF_pairs = test.calcIDF(TF_pairs, filesContents.size());
         JavaPairRDD<String, Tuple2<Integer, Double>> TF_IDF_pairs = test.calcTF_IDF_Join(TF_pairs, IDF_pairs);
@@ -200,5 +211,4 @@ public class TF_IDF_Test extends TestCase {
             assertTrue(errorMessage, TF_IDF_gt.equals(TF_IDF_test));
         }
     }
-
 }
