@@ -191,12 +191,12 @@ public class SparkTest extends TestCase {
         }
     }
 
-    private static void checkSpeedUp(final long singleElapsed, final double parElapsed, final int nCores){
+    private static void checkSpeedUp(final long singleElapsed, final double parElapsed, final int nCores, final int nNodes){
         final double speedup = (double)singleElapsed / (double)parElapsed;
         final double expectedSpeedup = 1.2;
         System.out.println();
         System.out.println("Single-core execution ran in " + singleElapsed + " ms");
-        System.out.println(nCores + "-core execution ran in " + parElapsed + " ms, yielding a speedup of " + speedup + "x");
+        System.out.println(nCores + "-core execution for " + nNodes + " ran in " + parElapsed + " ms, yielding a speedup of " + speedup + "x");
         System.out.println();
         final String msg = "Expected at least " + expectedSpeedup + "x speedup, but only saw " + speedup + "x. Sequential time = " +
                 singleElapsed + " ms, parallel time = " + parElapsed + " ms";
@@ -234,7 +234,7 @@ public class SparkTest extends TestCase {
         multiCoreContext.stop();
 
         checkRanksObtainedViaPar(parResult, nodesArr, ranksArr);
-        checkSpeedUp(singleElapsed, parElapsed, multiCoreContext.getNumberofCorses());
+        checkSpeedUp(singleElapsed, parElapsed, multiCoreContext.getNumberofCorses(), nNodes);
     }
 
     @Test
