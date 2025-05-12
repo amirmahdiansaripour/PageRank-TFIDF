@@ -42,7 +42,7 @@ public final class PageRank {
             Website currWebsite = key_value._2()._1();
             Double currWebsiteRank = key_value._2()._2();
             Iterator<Integer> neighborWebs = currWebsite.edgeIterator();
-            List<Tuple2<Integer, Double>> newRankss = new ArrayList<>();
+            List<Tuple2<Integer, Double>> newRanksRes = new ArrayList<>();
 //            System.out.println("Curr node (website) neighbors: " + currWebsite.getNEdges());
 //            Integer index = 0;
             while(neighborWebs.hasNext()){
@@ -50,9 +50,9 @@ public final class PageRank {
 //                index += 1;
                 Integer neighborWebID = neighborWebs.next();
                 Tuple2<Integer, Double> rankToNeighbor = new Tuple2(neighborWebID, currWebsiteRank/currWebsite.getNEdges());
-                newRankss.add(rankToNeighbor);
+                newRanksRes.add(rankToNeighbor);
             }
-            return newRankss.iterator();
+            return newRanksRes.iterator();
          });
 
 //         for(Tuple2<Integer, Double> rank : newRanks.take(NUM_OF_SAMPLES)){
