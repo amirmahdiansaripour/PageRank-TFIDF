@@ -23,11 +23,11 @@ TF-IDF is a traditional algorithm in Natural Language Processing (NLP) for text 
 
 For an input of $N$ text files, the algorithm works based on the following formulas: 
 
-$$TF(word w, text t) = \frac{number of occurrences of w in t}{size(t)}$$
+$$TF(word \space w \space , text \space t) = \frac{number \space of \space w \space occurrences \space in \space t}{size(t)}$$
 
-$$IDF(word w) = log(\frac{N}{number of documents containing w})$$
+$$IDF(word \space w) = log(\frac{N}{number \space of \space files \space containing \space w})$$
 
-$$TF-IDF(word w, text t) = TF(w, t) * IDF(w)$$
+$$TF-IDF(word \space w \space , \space text \space t) = TF(w \space , \space t) * IDF(w)$$
 
 TF-IDF value is between 0 and $log(N)$, and the higher it gets, the more relevant $w$ is to document $t$.
 
